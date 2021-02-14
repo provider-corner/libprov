@@ -4,6 +4,6 @@ set(CMAKE_C_STANDARD 99)
 
 find_package(OpenSSL 3.0 REQUIRED)
 
-add_library(prov STATIC err.c)
-target_include_directories(prov PUBLIC include)
-target_include_directories(prov PRIVATE ${OPENSSL_INCLUDE_DIR})
+add_library(libprov STATIC err.c)
+target_include_directories(libprov PUBLIC include)
+target_include_directories(libprov PRIVATE ${OPENSSL_INCLUDE_DIR})
