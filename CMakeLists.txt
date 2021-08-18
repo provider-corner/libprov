@@ -8,4 +8,4 @@ endif()
 
 add_library(libprov STATIC err.c)
 target_include_directories(libprov PUBLIC include)
-target_include_directories(libprov PRIVATE ${OPENSSL_INCLUDE_DIR})
+target_link_libraries(libprov PRIVATE OpenSSL::Crypto)
