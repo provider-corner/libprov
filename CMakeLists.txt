@@ -7,6 +7,6 @@ if (NOT OPENSSL_FOUND)
 endif()
 
 add_library(libprov STATIC err.c)
-set_target_properties(gost_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
+set_target_properties(libprov PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(libprov PUBLIC include)
 target_link_libraries(libprov PRIVATE OpenSSL::Crypto)
