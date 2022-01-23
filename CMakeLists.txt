@@ -6,7 +6,7 @@ if (NOT OPENSSL_FOUND)
   find_package(OpenSSL 3.0 REQUIRED)
 endif()
 
-add_library(libprov STATIC err.c)
+add_library(libprov STATIC err.c num.c)
 set_target_properties(libprov PROPERTIES
   POSITION_INDEPENDENT_CODE ON
   OUTPUT_NAME "prov")

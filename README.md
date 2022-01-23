@@ -15,3 +15,13 @@ Currently available routines:
     standards.  C99 required.
 
     See the comments in include/prov/err.h for more information.
+
+-   NUM helper
+
+    Converting OSSL_PARAM numbers to native numbers present a bit of a
+    challenge, as they are variable length, and may need some adaption
+    to fit into native numbers.
+    
+    provnum_get() and provnum_set() claim to be universally applicable
+    functions for converting an OSSL_PARAM number to a native integer
+    or 
