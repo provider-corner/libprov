@@ -70,16 +70,37 @@ macro(build_provider provider sources libraries)
   MESSAGE(DEBUG "OPENSSL_USE_STATIC_LIBS=${OPENSSL_USE_STATIC_LIBS}")
   MESSAGE(DEBUG "OPENSSL_MSVC_STATIC_RT=${OPENSSL_MSVC_STATIC_RT}")
 
-  if (DEFINED MSVC_VERSION)
+  if (MSVC)
     # FindOpenSSL.cmake assumes http://www.slproweb.com/products/Win32OpenSSL.html
     # and gets it quite wrong when an install from OpenSSL source is present
-    if (NOT EXISTS ${OPENSSL_CRYPTO_LIBRARIES})
-      set(OPENSSL_CRYPTO_LIBRARIES
-        ${OPENSSL_ROOT_DIR}/lib/libcrypto.lib)
+    if (NOT EXISTS ${OPENSSL_CRYPTO_LIBRARY})
+      set(OPENSSL_CRYPTO_LIBRARY ${OPENSSL_ROOT_DIR}/lib/libcrypto.lib)
+      message(STATUS "Modified OPENSSL_CRYPTO_LIBRARY = ${OPENSSL_CRYPTO_LIBRARY}")
+      set(OPENSSL_CRYPTO_LIBRARIES ${OPENSSL_CRYPTO_LIBRARY})
+      message(STATUS "Modified OPENSSL_CRYPTO_LIBRARIES = ${OPENSSL_CRYPTO_LIBRARIES}")
     endif()
-    if (NOT EXISTS ${OPENSSL_SSL_LIBRARIES})
+    if (NOT EXISTS ${OPENSSL_SSL_LIBRARY})
+      set(OPENSSL_SSL_LIBRARY ${OPENSSL_ROOT_DIR}/lib/libssl.lib)
+      message(STATUS "Modified OPENSSL_SSL_LIBRARY = ${OPENSSL_SSL_LIBRARY}")
       set(OPENSSL_SSL_LIBRARIES
-        ${OPENSSL_ROOT_DIR}/lib/libssl.lib ${OPENSSL_CRYPTO_LIBRARIES})
+        ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARIES})
+      message(STATUS "Modified OPENSSL_SSL_LIBRARIES = ${OPENSSL_CRYPTO_LIBRARIES}")
+    endif()
+    if (NOT DEFINED OPENSSL_APPLINK_SOURCE)
+      # OPENSSL_APPLINK_SOURCE is undefined, probably because of a version
+      # checking bug in FindOpenSSL.cmake that exists up until cmake version
+      # 3.23.0.  This does the exact same thing that FindOpenSSL.cmake is
+      # supposed to do.
+      find_file(OPENSSL_APPLINK_SOURCE
+        NAMES openssl/applink.c
+        PATHS ${OPENSSL_INCLUDE_DIR}
+        NO_DEFAULT_PATH)
+      if(NOT TARGET OpenSSL::applink)
+        add_library(OpenSSL::applink INTERFACE IMPORTED)
+        set_property(TARGET OpenSSL::applink APPEND
+          PROPERTY INTERFACE_SOURCES ${OPENSSL_APPLINK_SOURCE})
+      endif()
+      message(STATUS "Modified OPENSSL_APPLINK_SOURCE = ${OPENSSL_APPLINK_SOURCE}")
     endif()
   endif()
 
