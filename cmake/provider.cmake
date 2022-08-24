@@ -1,4 +1,13 @@
 #[=======================================================================[.rst:
+setup_provider_openssl
+----------------------
+
+A macro that finds the OpenSSL package with the minimum version 3.0, and
+applies fixups that are currently lacking in the official package.
+
+If needed, set ``CMAKE_PREFIX_PATH`` or ``OPENSSL_ROOT_DIR`` to the
+preferred OpenSSL *installation* directory.
+
 build_provider
 --------------
 
@@ -22,6 +31,7 @@ Usage example 1 (this uses libprov functionality)::
 
   include(libprov/cmake/provider.cmake)
   add_subdirectory(libprov)
+  setup_provider_openssl()
   build_provider(some "some.c;more.c" "libprov")
 
 Usage example 1 (a bare and entirely self contained provider)::
@@ -36,17 +46,12 @@ Usage example 1 (a bare and entirely self contained provider)::
   set(CMAKE_C_STANDARD 99)
 
   include(libprov/cmake/provider.cmake)
+  setup_provider_openssl()
   build_provider(some "some.c;more.c" "")
-
-Notes:
-
-- This macro finds the OpenSSL package with the minimum version 3.0.  If
-  needed, set ``CMAKE_PREFIX_PATH`` or ``OPENSSL_ROOT_DIR`` to the preferred
-  OpenSSL *installation* directory.
 
 #]=======================================================================]
 
-macro(build_provider provider sources libraries)
+macro(setup_provider_openssl)
   find_package(OpenSSL 3.0 REQUIRED)
 
   if (NOT DEFINED OPENSSL_ROOT_DIR)
@@ -63,9 +68,11 @@ macro(build_provider provider sources libraries)
   MESSAGE(DEBUG "OPENSSL_SSL_LIBRARY=${OPENSSL_SSL_LIBRARY}")
   MESSAGE(DEBUG "OPENSSL_SSL_LIBRARIES=${OPENSSL_SSL_LIBRARIES}")
   MESSAGE(DEBUG "OPENSSL_LIBRARIES=${OPENSSL_LIBRARIES}")
+  MESSAGE(DEBUG "OPENSSL_VERSION_MAJOR=${OPENSSL_VERSION_MAJOR}")
+  MESSAGE(DEBUG "OPENSSL_VERSION_MINOR=${OPENSSL_VERSION_MINOR}")
+  MESSAGE(DEBUG "OPENSSL_VERSION_FIX=${OPENSSL_VERSION_FIX}")
   MESSAGE(DEBUG "OPENSSL_VERSION=${OPENSSL_VERSION}")
   MESSAGE(DEBUG "OPENSSL_APPLINK_SOURCE=${OPENSSL_APPLINK_SOURCE}")
-
   MESSAGE(DEBUG "OPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}")
   MESSAGE(DEBUG "OPENSSL_USE_STATIC_LIBS=${OPENSSL_USE_STATIC_LIBS}")
   MESSAGE(DEBUG "OPENSSL_MSVC_STATIC_RT=${OPENSSL_MSVC_STATIC_RT}")
@@ -103,7 +110,9 @@ macro(build_provider provider sources libraries)
       message(STATUS "Modified OPENSSL_APPLINK_SOURCE = ${OPENSSL_APPLINK_SOURCE}")
     endif()
   endif()
+endmacro()
 
+macro(build_provider provider sources libraries)
   # Putting together the provider module
   add_library(${provider} MODULE ${sources})
   set_target_properties(${provider} PROPERTIES
