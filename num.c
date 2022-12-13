@@ -150,3 +150,4 @@ static struct resultdesc provnum_copy(struct numdesc dest, struct numdesc src)
     }
 
 implement_provnum(size_t, OSSL_PARAM_UNSIGNED_INTEGER)
+implement_provnum(int, OSSL_PARAM_INTEGER)
