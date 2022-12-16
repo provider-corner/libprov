@@ -93,6 +93,60 @@ macro(setup_provider_openssl)
         ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARIES})
       message(STATUS "Modified OPENSSL_SSL_LIBRARIES = ${OPENSSL_CRYPTO_LIBRARIES}")
     endif()
+
+    # FindOpenSSL.cmake makes no attempt at all to find the OpenSSL DLLs.
+    if (DEFINED CMAKE_GENERATOR_PLATFORM)
+      set(platform ${CMAKE_GENERATOR_PLATFORM})
+    elseif (defined CMAKE_VS_PLATFORM_NAME_DEFAULT)
+      set(platform ${CMAKE_VS_PLATFORM_NAME_DEFAULT})
+    else()
+      set(platform "Win32")
+    endif()
+    # Massage the platform to get the form OpenSSL uses:
+    # "Win32"     -> ""         (yup, nothing!)
+    # "x64"       -> "-x64"
+    # "Itanium"   -> "-ia64"
+    if (platform STREQUAL "Win32")
+      set(platform "")
+    elseif (platform STREQUAL "x64")
+      set(platform "-x64")
+    elseif (platform STREQUAL "Itanium")
+      set(platform "-ia64")
+    else()
+      message(FAILURE, "Unsupported platform: ${platform}")
+    endif()
+    set(OPENSSL_CRYPTO_DLL_NAME
+      "libcrypto-${OPENSSL_VERSION_MAJOR}${platform}")
+    set(OPENSSL_SSL_DLL_NAME
+      "libssl-${OPENSSL_VERSION_MAJOR}${platform}")
+    MESSAGE(DEBUG "OPENSSL_CRYPTO_DLL_NAME=${OPENSSL_CRYPTO_DLL_NAME}")
+    MESSAGE(DEBUG "OPENSSL_SSL_DLL_NAME=${OPENSSL_SSL_DLL_NAME}")
+    find_file(OPENSSL_CRYPTO_DLL
+      NAMES "${OPENSSL_CRYPTO_DLL_NAME}.dll"
+      PATHS "${OPENSSL_ROOT_DIR}"
+      PATH_SUFFIXES "bin")
+    find_file(OPENSSL_SSL_DLL
+      NAMES "${OPENSSL_SSL_DLL_NAME}.dll"
+      PATHS "${OPENSSL_ROOT_DIR}"
+      PATH_SUFFIXES "bin")
+    MESSAGE(DEBUG "OPENSSL_CRYPTO_DLL=${OPENSSL_CRYPTO_DLL}")
+    MESSAGE(DEBUG "OPENSSL_SSL_DLL=${OPENSSL_SSL_DLL}")
+    if (EXISTS ${OPENSSL_CRYPTO_DLL})
+      message(STATUS "Set OPENSSL_CRYPTO_DLL: ${OPENSSL_CRYPTO_DLL}")
+    endif()
+    if (EXISTS ${OPENSSL_SSL_DLL})
+      message(STATUS "Set OPENSSL_SSL_DLL ${OPENSSL_SSL_DLL}")
+    endif()
+
+    # If OpenSSL::Crypto and OpenSSL::SSL were defined as SHARED
+    # libraries when they are, in fact, shared libraries, we could
+    # adjust IMPORTED_IMPLIB and IMPORTED_LOCATION to specify the DLL
+    # alongside the import library.
+    # Alas, that is not the case...  they are defined with the type
+    # UNKNOWN, which means that they must be copied manually alongside
+    # any program that's linked with them.  That needs to be done by
+    # the caller.
+
     if (NOT DEFINED OPENSSL_APPLINK_SOURCE)
       # OPENSSL_APPLINK_SOURCE is undefined, probably because of a version
       # checking bug in FindOpenSSL.cmake that exists up until cmake version
