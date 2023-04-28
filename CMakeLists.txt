@@ -7,6 +7,8 @@ cmake_policy(SET
 project(libprov LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 
+option(LIBPROV_TESTS "Build and possibly run tests")
+
 if (NOT OPENSSL_FOUND)
   find_package(OpenSSL 3.0 REQUIRED)
 endif()
@@ -17,3 +19,8 @@ set_target_properties(libprov PROPERTIES
   OUTPUT_NAME "prov")
 target_include_directories(libprov PUBLIC include)
 target_include_directories(libprov PRIVATE ${OPENSSL_INCLUDE_DIR})
+
+if (LIBPROV_TESTS)
+  # TEST programs ######################################################
+  add_subdirectory(t/params)
+endif()

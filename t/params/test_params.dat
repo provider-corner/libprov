@@ -1,0 +1,13 @@
+[ "test_params_tree",
+  # From md6
+  PARAM_rounds => "rounds",
+  PARAM_mode => "mode",
+  PARAM_size => "size",
+  # From crypt
+  PARAM_pass => "pass",
+  PARAM_salt => "salt",
+  PARAM_size => "size",
+  # From extra
+  PARAM_version => "version",
+  PARAM_buildinfo => "buildinfo",
+  PARAM_author => "author" ];

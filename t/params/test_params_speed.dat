@@ -1,0 +1,11 @@
+[ "test_params_speed",
+  PARAM_ivlen => "ivlen",
+  PARAM_mode => "mode",
+  PARAM_aead => "aead",
+  PARAM_custom_iv => "custom-iv",
+  PARAM_cts => "cts",
+  PARAM_tls1_multiblock => "tls1-multi",
+  PARAM_has_rand_key => "has-randkey",
+  PARAM_keylen => "keylen",
+  PARAM_block_size => "blocksize",
+];
