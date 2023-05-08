@@ -8,6 +8,12 @@ applies fixups that are currently lacking in the official package.
 If needed, set ``CMAKE_PREFIX_PATH`` or ``OPENSSL_ROOT_DIR`` to the
 preferred OpenSSL *installation* directory.
 
+NOTE: With MSVC, there is a problem with mixed up settings when both a custom
+OpenSSL and the Shinng Light distribution are installed and accessible by CMake
+at the same time.  The current workaround is to build with ``--config Release``
+or anything else other than ``--config Debug``.  The ``Debug`` configuration
+seems to be the default, so make sure to specify this explicitly.
+
 build_provider
 --------------
 
@@ -61,6 +67,60 @@ macro(setup_provider_openssl)
     find_program(OPENSSL_PROGRAM openssl
       PATHS ${OPENSSL_ROOT_DIR} PATH_SUFFIXES apps bin NO_DEFAULT_PATH)
   endif()
+  if (NOT DEFINED OPENSSL_LIBRARY_DIR)
+    get_property(_LIBPROV_property
+                 TARGET OpenSSL::Crypto
+                 PROPERTY IMPORTED_LOCATION)
+    if (NOT _LIBPROV_property)
+      # Use IMPORTED_LOCATION_RELEASE, because we know that FindOpenSSL.cmake
+      # gets it right.  IMPORTED_LOCATION_DEBUG is less trustable, as it might
+      # be the location of Shining Light's installation, whether this was asked
+      # for or not.
+      get_property(_LIBPROV_property
+                   TARGET OpenSSL::Crypto
+                   PROPERTY IMPORTED_LOCATION_RELEASE)
+    endif()
+    get_filename_component(OPENSSL_LIBRARY_DIR ${_LIBPROV_property} DIRECTORY)
+    unset(_LIBPROV_property)
+  endif()
+  if (NOT DEFINED OPENSSL_MODULES_DIR)
+    file(TO_NATIVE_PATH "${OPENSSL_PROGRAM}" _LIBPROV_program)
+    if (MSVC)
+      execute_process(
+        COMMAND
+          "${_LIBPROV_program}" info -modulesdir
+        OUTPUT_VARIABLE OPENSSL_MODULES_DIR
+      )
+    else()
+      execute_process(
+        COMMAND
+          ${CMAKE_COMMAND} -E env
+            LD_LIBRARY_PATH=${OPENSSL_LIBRARY_DIR}
+            DYLD_LIBRARY_PATH=${OPENSSL_LIBRARY_DIR}
+            LIBPATH=${OPENSSL_LIBRARY_DIR}
+            "${_LIBPROV_program}" info -modulesdir
+        OUTPUT_VARIABLE OPENSSL_MODULES_DIR
+      )
+    endif()
+    string(STRIP "${OPENSSL_MODULES_DIR}" OPENSSL_MODULES_DIR)
+    file(TO_CMAKE_PATH "${OPENSSL_MODULES_DIR}" OPENSSL_MODULES_DIR)
+    unset(_LIBPROV_program)
+  endif()
+  if (NOT DEFINED OPENSSL_APPLINK_SOURCE)
+    # OPENSSL_APPLINK_SOURCE may be undefined, probably because of a version
+    # checking bug in FindOpenSSL.cmake that exists up until cmake version
+    # 3.23.0.  This does the exact same thing that FindOpenSSL.cmake is
+    # supposed to do.
+    find_file(OPENSSL_APPLINK_SOURCE
+      NAMES openssl/applink.c
+      PATHS ${OPENSSL_INCLUDE_DIR}
+      NO_DEFAULT_PATH)
+    if(NOT TARGET OpenSSL::applink)
+      add_library(OpenSSL::applink INTERFACE IMPORTED)
+      set_property(TARGET OpenSSL::applink APPEND
+        PROPERTY INTERFACE_SOURCES ${OPENSSL_APPLINK_SOURCE})
+    endif()
+  endif()
 
   # This is set by the user, or above, or possibly by OpenSSLConfig.cmake
   MESSAGE(DEBUG "OPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}")
@@ -84,7 +144,7 @@ macro(setup_provider_openssl)
   MESSAGE(DEBUG "OPENSSL_VERSION_MINOR=${OPENSSL_VERSION_MINOR}")
   MESSAGE(DEBUG "OPENSSL_VERSION_FIX=${OPENSSL_VERSION_FIX}")
 
-  # These are set by FindOpenSSL.cmake or OpenSSLConfig.cmake
+  # These are set by FindOpenSSL.cmake or OpenSSLConfig.cmake, or here
   MESSAGE(DEBUG "OPENSSL_INCLUDE_DIR=${OPENSSL_INCLUDE_DIR}")
   MESSAGE(DEBUG "OPENSSL_LIBRARY_DIR=${OPENSSL_LIBRARY_DIR}")
   MESSAGE(DEBUG "OPENSSL_ENGINES_DIR=${OPENSSL_ENGINES_DIR}")
@@ -97,103 +157,6 @@ macro(setup_provider_openssl)
   MESSAGE(DEBUG "OPENSSL_SSL_LIBRARY=${OPENSSL_SSL_LIBRARY}")
   MESSAGE(DEBUG "OPENSSL_SSL_LIBRARIES=${OPENSSL_SSL_LIBRARIES}")
   MESSAGE(DEBUG "OPENSSL_LIBRARIES=${OPENSSL_LIBRARIES}")
-
-  # If OpenSSL was found via a config file, we trust it blindly.
-  if (NOT DEFINED OpenSSL_CONFIG)
-    if (MSVC)
-      # FindOpenSSL.cmake assumes http://www.slproweb.com/products/Win32OpenSSL.html
-      # and gets it quite wrong when an install from OpenSSL source is present
-      # We figure it out by looking for existing DLLs and see if we recognise
-      # them from a direct OpenSSL install.  FindOpenSSL.cmake makes no attempt
-      # at all to find these.
-      # FindOpenSSL.cmake makes no attempt at all to find the OpenSSL DLLs.
-      if (DEFINED CMAKE_GENERATOR_PLATFORM)
-        set(platform ${CMAKE_GENERATOR_PLATFORM})
-      elseif (defined CMAKE_VS_PLATFORM_NAME_DEFAULT)
-        set(platform ${CMAKE_VS_PLATFORM_NAME_DEFAULT})
-      else()
-        set(platform "Win32")
-      endif()
-      # Massage the platform to get the form OpenSSL uses:
-      # "Win32"     -> ""         (yup, nothing!)
-      # "x64"       -> "-x64"
-      # "Itanium"   -> "-ia64"
-      if (platform STREQUAL "Win32")
-        set(platform "")
-      elseif (platform STREQUAL "x64")
-        set(platform "-x64")
-      elseif (platform STREQUAL "Itanium")
-        set(platform "-ia64")
-      else()
-        message(FAILURE, "Unsupported platform: ${platform}")
-      endif()
-      set(OPENSSL_CRYPTO_DLL_NAME
-        "libcrypto-${OPENSSL_VERSION_MAJOR}${platform}")
-      set(OPENSSL_SSL_DLL_NAME
-        "libssl-${OPENSSL_VERSION_MAJOR}${platform}")
-      MESSAGE(DEBUG "OPENSSL_CRYPTO_DLL_NAME=${OPENSSL_CRYPTO_DLL_NAME}")
-      MESSAGE(DEBUG "OPENSSL_SSL_DLL_NAME=${OPENSSL_SSL_DLL_NAME}")
-      find_file(OPENSSL_LIBCRYPTO_SHARED
-        NAMES "${OPENSSL_CRYPTO_DLL_NAME}.dll"
-        PATHS "${OPENSSL_ROOT_DIR}"
-        PATH_SUFFIXES "bin" "apps"
-        NO_DEFAULT_PATH)
-      find_file(OPENSSL_LIBSSL_SHARED
-        NAMES "${OPENSSL_SSL_DLL_NAME}.dll"
-        PATHS "${OPENSSL_ROOT_DIR}"
-        PATH_SUFFIXES "bin" "apps"
-        NO_DEFAULT_PATH)
-      MESSAGE(DEBUG "OPENSSL_LIBCRYPTO_SHARED=${OPENSSL_LIBCRYPTO_SHARED}")
-      MESSAGE(DEBUG "OPENSSL_LIBSSL_SHARED=${OPENSSL_LIBSSL_SHARED}")
-
-      # Correct FindOpenSSL.cmake's assumptions
-      if (EXISTS "${OPENSSL_LIBCRYPTO_SHARED}")
-        set(OPENSSL_LIBCRYPTO_IMPORT "${OPENSSL_ROOT_DIR}/lib/libcrypto.lib")
-        set(OPENSSL_CRYPTO_LIBRARY "${OPENSSL_LIBCRYPTO_IMPORT}")
-        message(DEBUG "Modified OPENSSL_CRYPTO_LIBRARY = ${OPENSSL_CRYPTO_LIBRARY}")
-        set(OPENSSL_CRYPTO_LIBRARIES ${OPENSSL_CRYPTO_LIBRARY})
-        message(DEBUG "Modified OPENSSL_CRYPTO_LIBRARIES = ${OPENSSL_CRYPTO_LIBRARIES}")
-        set_target_properties(OpenSSL::Crypto PROPERTIES
-          IMPORTED_LOCATION "${OPENSSL_CRYPTO_LIBRARY}")
-      endif()
-      if (EXISTS "${OPENSSL_LIBSSL_SHARED}")
-        set(OPENSSL_LIBCRYPTO_IMPORT "${OPENSSL_ROOT_DIR}/lib/libcrypto.lib")
-        set(OPENSSL_CRYPTO_LIBRARY "${OPENSSL_LIBCRYPTO_IMPORT}")
-        message(DEBUG "Modified OPENSSL_SSL_LIBRARY = ${OPENSSL_SSL_LIBRARY}")
-        set(OPENSSL_SSL_LIBRARIES
-          "${OPENSSL_SSL_LIBRARY}" "${OPENSSL_CRYPTO_LIBRARIES}")
-        message(DEBUG "Modified OPENSSL_SSL_LIBRARIES = ${OPENSSL_CRYPTO_LIBRARIES}")
-        set_target_properties(OpenSSL::Crypto PROPERTIES
-          IMPORTED_LOCATION "${OPENSSL_CRYPTO_LIBRARY}")
-      endif()
-
-      # If OpenSSL::Crypto and OpenSSL::SSL were defined as SHARED
-      # libraries when they are, in fact, shared libraries, we could
-      # adjust IMPORTED_IMPLIB and IMPORTED_LOCATION to specify the DLL
-      # alongside the import library.
-      # Alas, that is not the case...  they are defined with the type
-      # UNKNOWN, which means that they must be copied manually alongside
-      # any program that's linked with them.  That needs to be done by
-      # the caller.
-
-      if (NOT DEFINED OPENSSL_APPLINK_SOURCE)
-        # OPENSSL_APPLINK_SOURCE is undefined, probably because of a version
-        # checking bug in FindOpenSSL.cmake that exists up until cmake version
-        # 3.23.0.  This does the exact same thing that FindOpenSSL.cmake is
-        # supposed to do.
-        find_file(OPENSSL_APPLINK_SOURCE
-          NAMES openssl/applink.c
-          PATHS ${OPENSSL_INCLUDE_DIR}
-          NO_DEFAULT_PATH)
-        if(NOT TARGET OpenSSL::applink)
-          add_library(OpenSSL::applink INTERFACE IMPORTED)
-          set_property(TARGET OpenSSL::applink APPEND
-            PROPERTY INTERFACE_SOURCES ${OPENSSL_APPLINK_SOURCE})
-        endif()
-        message(DEBUG "Modified OPENSSL_APPLINK_SOURCE = ${OPENSSL_APPLINK_SOURCE}")
-      endif()
-    endif()
-  endif()
 endmacro()
 
 macro(build_provider provider sources libraries)
