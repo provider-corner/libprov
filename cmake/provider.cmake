@@ -67,6 +67,9 @@ macro(setup_provider_openssl)
     find_program(OPENSSL_PROGRAM openssl
       PATHS ${OPENSSL_ROOT_DIR} PATH_SUFFIXES apps bin NO_DEFAULT_PATH)
   endif()
+  if (NOT DEFINED OPENSSL_RUNTIME_DIR)
+    get_filename_component(OPENSSL_RUNTIME_DIR ${OPENSSL_PROGRAM} DIRECTORY)
+  endif()
   if (NOT DEFINED OPENSSL_LIBRARY_DIR)
     get_property(_LIBPROV_property
                  TARGET OpenSSL::Crypto
@@ -115,11 +118,40 @@ macro(setup_provider_openssl)
       NAMES openssl/applink.c
       PATHS ${OPENSSL_INCLUDE_DIR}
       NO_DEFAULT_PATH)
-    if(NOT TARGET OpenSSL::applink)
+    if (NOT TARGET OpenSSL::applink)
       add_library(OpenSSL::applink INTERFACE IMPORTED)
       set_property(TARGET OpenSSL::applink APPEND
         PROPERTY INTERFACE_SOURCES ${OPENSSL_APPLINK_SOURCE})
     endif()
+  endif()
+  # Currently, knowing the exact shared library names is mostly useful for
+  # Windows builds, so that's what we're going for.
+  if ((NOT OPENSSL_USE_STATIC_LIBS) AND WIN32)
+    if (DEFINED CMAKE_GENERATOR_PLATFORM)
+      set(_LIBPROV_platform ${CMAKE_GENERATOR_PLATFORM})
+    elseif (defined CMAKE_VS_PLATFORM_NAME_DEFAULT)
+      set(_LIBPROV_platform ${CMAKE_VS_PLATFORM_NAME_DEFAULT})
+    else()
+      set(_LIBPROV_platform "Win32")
+    endif()
+    # Massage the platform to get the form OpenSSL uses:
+    # "Win32"     -> ""         (yup, nothing!)
+    # "x64"       -> "-x64"
+    # "Itanium"   -> "-ia64"
+    if (_LIBPROV_platform STREQUAL "Win32")
+      set(_LIBPROV_platform "")
+    elseif (_LIBPROV_platform STREQUAL "x64")
+      set(_LIBPROV_platform "-x64")
+    elseif (_LIBPROV_platform STREQUAL "Itanium")
+      set(_LIBPROV_platform "-ia64")
+    else()
+      message(FAILURE, "Unsupported platform: ${_LIBPROV_platform}")
+    endif()
+    set(OPENSSL_LIBCRYPTO_SHARED
+      "${OPENSSL_RUNTIME_DIR}/libcrypto-${OPENSSL_VERSION_MAJOR}${_LIBPROV_platform}.dll")
+    set(OPENSSL_LIBSSL_SHARED
+      "${OPENSSL_RUNTIME_DIR}/libssl-${OPENSSL_VERSION_MAJOR}${_LIBPROV_platform}.dll")
+    unset(_LIBPROV_platform)
   endif()
 
   # This is set by the user, or above, or possibly by OpenSSLConfig.cmake
@@ -152,6 +184,8 @@ macro(setup_provider_openssl)
   MESSAGE(DEBUG "OPENSSL_RUNTIME_DIR=${OPENSSL_RUNTIME_DIR}")
   MESSAGE(DEBUG "OPENSSL_APPLINK_SOURCE=${OPENSSL_APPLINK_SOURCE}")
   MESSAGE(DEBUG "OPENSSL_PROGRAM=${OPENSSL_PROGRAM}")
+  MESSAGE(DEBUG "OPENSSL_LIBCRYPTO_SHARED=${OPENSSL_LIBCRYPTO_SHARED}")
+  MESSAGE(DEBUG "OPENSSL_LIBSSL_SHARED=${OPENSSL_LIBSSL_SHARED}")
   MESSAGE(DEBUG "OPENSSL_CRYPTO_LIBRARY=${OPENSSL_CRYPTO_LIBRARY}")
   MESSAGE(DEBUG "OPENSSL_CRYPTO_LIBRARIES=${OPENSSL_CRYPTO_LIBRARIES}")
   MESSAGE(DEBUG "OPENSSL_SSL_LIBRARY=${OPENSSL_SSL_LIBRARY}")
