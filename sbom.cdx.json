@@ -1,0 +1,40 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "version": 1,
+  "metadata": {
+    "authors": [
+      {
+        "name": "@VCS_SBOM_AUTHORS@"
+      }
+    ]
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pkg:github/provider-corner/libprov@@VCS_TAG@",
+      "cpe": "cpe:2.3:a:provider-corner:libprov:@VCS_TAG@:*:*:*:*:*:*:*",
+      "name": "libprov",
+      "version": "@VCS_VERSION@",
+      "description": "Small library of helpers for OpenSSL 3 providers",
+      "authors": [
+        {
+          "name": "@VCS_AUTHORS@"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "CC0-1.0"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/provider-corner/libprov"
+        }
+      ]
+    }
+  ]
+}
