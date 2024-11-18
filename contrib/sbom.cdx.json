@@ -12,8 +12,8 @@
   "components": [
     {
       "type": "library",
-      "bom-ref": "pkg:github/provider-corner/libprov@@VCS_TAG@",
-      "cpe": "cpe:2.3:a:provider-corner:libprov:@VCS_TAG@:*:*:*:*:*:*:*",
+      "bom-ref": "pkg:github/provider-corner/libprov@@VCS_COMMIT@",
+      "cpe": "cpe:2.3:a:provider-corner:libprov:@VCS_COMMIT@:*:*:*:*:*:*:*",
       "name": "libprov",
       "version": "@VCS_VERSION@",
       "description": "Small library of helpers for OpenSSL 3 providers",
