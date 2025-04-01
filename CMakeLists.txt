@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 cmake_policy(SET
   # This allows setting C_VISIBILITY_PRESET on static libraries, for
   # those who want to do this with the libprov library
