@@ -11,3 +11,4 @@ int provnum_set_int(OSSL_PARAM *param, int src);
 #define PROVNUM_E_WRONG_TYPE    -1
 #define PROVNUM_E_TOOBIG        -2
 #define PROVNUM_E_UNSUPPORTED   -3
+#define PROVNUM_E_NULL          -4
