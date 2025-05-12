@@ -58,7 +58,13 @@ static struct resultdesc provnum_copy(struct numdesc dest, struct numdesc src)
     }
 
     if (src.size == 0) {
-        memset(dest.data, 0, dest.size);
+        if (dest.data != NULL)
+            memset(dest.data, 0, dest.size);
+        return result;
+    }
+
+    if (src.data == NULL) {
+        result.result = PROVNUM_E_NULL;
         return result;
     }
 
@@ -90,6 +96,11 @@ static struct resultdesc provnum_copy(struct numdesc dest, struct numdesc src)
     }
 
     size_t srclsb = srcmsb + srcmsb2lsb * (src.size - 1);
+
+    if (dest.data == NULL) {
+        result.result = PROVNUM_E_NULL;
+        return result;
+    }
 
     /* Simple case, all significant details match */
     if (dest.endian == src.endian
